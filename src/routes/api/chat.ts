@@ -18,9 +18,24 @@ export const Route = createFileRoute("/api/chat")({
         }
 
         const body = (await request.json()) as {
-          messages?: Array<{ role: "user" | "assistant"; content: string }>;
+          messages?: Array<{ role: "user" | "assistant"; content: string; images?: string[] }>;
         };
-        const messages = Array.isArray(body.messages) ? body.messages.slice(-30) : [];
+        const raw = Array.isArray(body.messages) ? body.messages.slice(-30) : [];
+        const messages = raw.map((m) => {
+          if (m.role === "user" && m.images && m.images.length > 0) {
+            return {
+              role: m.role,
+              content: [
+                ...(m.content ? [{ type: "text", text: m.content }] : []),
+                ...m.images.slice(0, 5).map((url) => ({
+                  type: "image_url",
+                  image_url: { url },
+                })),
+              ],
+            };
+          }
+          return { role: m.role, content: m.content };
+        });
 
         const upstream = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
           method: "POST",

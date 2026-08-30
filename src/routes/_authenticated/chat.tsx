@@ -1,26 +1,41 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { ArrowUp, Sparkles, Square, Plus, Bot, User, ImagePlus, Camera, X } from "lucide-react";
+import {
+  ArrowUp,
+  Sparkles,
+  Square,
+  Plus,
+  Bot,
+  User,
+  ImagePlus,
+  Camera,
+  X,
+  Volume2,
+  VolumeX,
+  LogOut,
+} from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useSpeech } from "@/hooks/use-speech";
 
-export const Route = createFileRoute("/")({
+export const Route = createFileRoute("/_authenticated/chat")({
   head: () => ({
     meta: [
-      { title: "Mainato GPT Super — Assistente de IA em azul e preto" },
+      { title: "Conversa — Mainato GPT Super" },
       {
         name: "description",
         content:
-          "Mainato GPT Super: converse com uma IA rápida e inteligente em português. Respostas em tempo real, visual azul e preto.",
+          "Converse com o Mainato GPT Super: respostas em tempo real, envio de imagens e leitura em voz alta.",
       },
-      { property: "og:title", content: "Mainato GPT Super" },
+      { property: "og:title", content: "Conversa no Mainato GPT Super" },
       {
         property: "og:description",
-        content: "Converse com uma IA rápida e inteligente em português, com respostas em tempo real.",
+        content: "IA em português com respostas em tempo real, imagens e voz.",
       },
     ],
   }),
-  component: Index,
+  component: Chat,
 });
 
 type Msg = { role: "user" | "assistant"; content: string; images?: string[] };
@@ -44,17 +59,27 @@ const SUGGESTIONS = [
   "Corrija e melhore o meu texto",
 ];
 
-function Index() {
+function Chat() {
+  const navigate = useNavigate();
   const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pendingImages, setPendingImages] = useState<string[]>([]);
+  const [autoSpeak, setAutoSpeak] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
   const taRef = useRef<HTMLTextAreaElement>(null);
   const galleryRef = useRef<HTMLInputElement>(null);
   const cameraRef = useRef<HTMLInputElement>(null);
+  const { supported: voiceSupported, speakingId, speak, stop } = useSpeech();
+
+  const signOut = async () => {
+    stop();
+    abortRef.current?.abort();
+    await supabase.auth.signOut();
+    navigate({ to: "/auth", replace: true });
+  };
 
   const addFiles = async (files: FileList | File[]) => {
     setError(null);
@@ -86,6 +111,7 @@ function Index() {
     const content = text.trim();
     if ((!content && pendingImages.length === 0) || loading) return;
     setError(null);
+    stop();
     const images = pendingImages;
     const userMsg: Msg = { role: "user", content };
     if (images.length > 0) userMsg.images = images;
@@ -150,6 +176,11 @@ function Index() {
           copy[copy.length - 1] = { role: "assistant", content: "_Sem resposta._" };
           return copy;
         });
+      } else if (autoSpeak && voiceSupported) {
+        setMessages((prev) => {
+          speak(acc, prev.length - 1);
+          return prev;
+        });
       }
     } catch (e) {
       if ((e as Error).name === "AbortError") {
@@ -172,7 +203,7 @@ function Index() {
     <div className="relative flex min-h-[100dvh] flex-col bg-background text-foreground">
       <div className="pointer-events-none absolute inset-x-0 top-0 h-[420px] halo" />
 
-      <header className="relative z-10 flex items-center justify-between border-b border-border/60 px-4 py-3 backdrop-blur-sm sm:px-6">
+      <header className="relative z-10 flex items-center justify-between gap-2 border-b border-border/60 px-4 py-3 backdrop-blur-sm sm:px-6">
         <div className="flex items-center gap-3">
           <div className="flex size-9 items-center justify-center rounded-xl bg-brand-gradient shadow-glow">
             <Sparkles className="size-4 text-primary-foreground" />
@@ -184,18 +215,47 @@ function Index() {
             <p className="text-[11px] text-muted-foreground">Inteligência em tempo real</p>
           </div>
         </div>
-        <button
-          onClick={() => {
-            abortRef.current?.abort();
-            setMessages([]);
-            setPendingImages([]);
-            setError(null);
-          }}
-          className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface-2/70 px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:border-primary/60 hover:text-foreground"
-        >
-          <Plus className="size-3.5" />
-          Novo chat
-        </button>
+        <div className="flex items-center gap-1.5">
+          {voiceSupported && (
+            <button
+              onClick={() => {
+                if (autoSpeak) stop();
+                setAutoSpeak((v) => !v);
+              }}
+              aria-pressed={autoSpeak}
+              title={autoSpeak ? "Desligar leitura em voz" : "Ler respostas em voz alta"}
+              className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
+                autoSpeak
+                  ? "border-primary/70 bg-primary/15 text-foreground"
+                  : "border-border bg-surface-2/70 text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {autoSpeak ? <Volume2 className="size-3.5" /> : <VolumeX className="size-3.5" />}
+              Voz
+            </button>
+          )}
+          <button
+            onClick={() => {
+              abortRef.current?.abort();
+              stop();
+              setMessages([]);
+              setPendingImages([]);
+              setError(null);
+            }}
+            className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface-2/70 px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:border-primary/60 hover:text-foreground"
+          >
+            <Plus className="size-3.5" />
+            Novo
+          </button>
+          <button
+            onClick={signOut}
+            aria-label="Sair"
+            title="Sair"
+            className="inline-flex size-8 items-center justify-center rounded-full border border-border bg-surface-2/70 text-muted-foreground transition-colors hover:border-primary/60 hover:text-foreground"
+          >
+            <LogOut className="size-3.5" />
+          </button>
+        </div>
       </header>
 
       <main className="relative z-10 mx-auto flex w-full max-w-3xl flex-1 flex-col px-4 sm:px-6">
@@ -251,9 +311,27 @@ function Index() {
                     </div>
                   )}
                   {m.content ? (
-                    <div className="prose-chat text-[15px] leading-relaxed break-words">
-                      <ReactMarkdown remarkPlugins={[remarkGfm]}>{m.content}</ReactMarkdown>
-                    </div>
+                    <>
+                      <div className="prose-chat text-[15px] leading-relaxed break-words">
+                        <ReactMarkdown remarkPlugins={[remarkGfm]}>{m.content}</ReactMarkdown>
+                      </div>
+                      {m.role === "assistant" && voiceSupported && (
+                        <button
+                          onClick={() => (speakingId === i ? stop() : speak(m.content, i))}
+                          className="mt-2 inline-flex items-center gap-1.5 rounded-full border border-border px-2.5 py-1 text-[11px] text-muted-foreground transition-colors hover:border-primary/60 hover:text-foreground"
+                        >
+                          {speakingId === i ? (
+                            <>
+                              <VolumeX className="size-3" /> Parar
+                            </>
+                          ) : (
+                            <>
+                              <Volume2 className="size-3" /> Ouvir
+                            </>
+                          )}
+                        </button>
+                      )}
+                    </>
                   ) : (
                     <div className="flex gap-1 py-2">
                       {[0, 1, 2].map((d) => (
@@ -340,46 +418,46 @@ function Index() {
                 <Camera className="size-5" />
               </button>
               <textarea
-              ref={taRef}
-              value={input}
-              rows={1}
-              placeholder="Escreva a sua mensagem..."
-              onChange={(e) => {
-                setInput(e.target.value);
-                const el = e.target;
-                el.style.height = "auto";
-                el.style.height = `${Math.min(el.scrollHeight, 180)}px`;
-              }}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) {
-                  e.preventDefault();
-                  send(input);
-                  if (taRef.current) taRef.current.style.height = "auto";
-                }
-              }}
-              className="max-h-44 flex-1 resize-none bg-transparent py-2.5 text-[15px] outline-none placeholder:text-muted-foreground"
-            />
-            {loading ? (
-              <button
-                onClick={() => abortRef.current?.abort()}
-                className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-secondary transition-colors hover:bg-accent"
-                aria-label="Parar resposta"
-              >
-                <Square className="size-4 fill-current" />
-              </button>
-            ) : (
-              <button
-                onClick={() => {
-                  send(input);
-                  if (taRef.current) taRef.current.style.height = "auto";
+                ref={taRef}
+                value={input}
+                rows={1}
+                placeholder="Escreva a sua mensagem..."
+                onChange={(e) => {
+                  setInput(e.target.value);
+                  const el = e.target;
+                  el.style.height = "auto";
+                  el.style.height = `${Math.min(el.scrollHeight, 180)}px`;
                 }}
-                disabled={!input.trim() && pendingImages.length === 0}
-                className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-brand-gradient text-primary-foreground transition-opacity disabled:opacity-40"
-                aria-label="Enviar mensagem"
-              >
-                <ArrowUp className="size-5" />
-              </button>
-            )}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    send(input);
+                    if (taRef.current) taRef.current.style.height = "auto";
+                  }
+                }}
+                className="max-h-44 flex-1 resize-none bg-transparent py-2.5 text-[15px] outline-none placeholder:text-muted-foreground"
+              />
+              {loading ? (
+                <button
+                  onClick={() => abortRef.current?.abort()}
+                  className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-secondary transition-colors hover:bg-accent"
+                  aria-label="Parar resposta"
+                >
+                  <Square className="size-4 fill-current" />
+                </button>
+              ) : (
+                <button
+                  onClick={() => {
+                    send(input);
+                    if (taRef.current) taRef.current.style.height = "auto";
+                  }}
+                  disabled={!input.trim() && pendingImages.length === 0}
+                  className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-brand-gradient text-primary-foreground transition-opacity disabled:opacity-40"
+                  aria-label="Enviar mensagem"
+                >
+                  <ArrowUp className="size-5" />
+                </button>
+              )}
             </div>
           </div>
           <p className="mt-2 text-center text-[11px] text-muted-foreground">

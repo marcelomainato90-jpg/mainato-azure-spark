@@ -190,3 +190,60 @@
     letter-spacing: -0.02em;
   }
 }
+
+@utility prose-chat {
+  & p {
+    margin-block: 0.5rem;
+  }
+  & ul,
+  & ol {
+    margin-block: 0.5rem;
+    padding-left: 1.25rem;
+    list-style: revert;
+  }
+  & li {
+    margin-block: 0.15rem;
+  }
+  & a {
+    color: var(--primary-glow);
+    text-decoration: underline;
+  }
+  & strong {
+    font-weight: 600;
+  }
+  & h1,
+  & h2,
+  & h3 {
+    margin-block: 0.75rem 0.35rem;
+    font-weight: 600;
+  }
+  & code {
+    border-radius: 0.375rem;
+    background: var(--surface-2);
+    padding: 0.1rem 0.35rem;
+    font-size: 0.875em;
+  }
+  & pre {
+    overflow-x: auto;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--surface-2);
+    padding: 0.9rem;
+    margin-block: 0.6rem;
+  }
+  & pre code {
+    background: transparent;
+    padding: 0;
+  }
+  & table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-block: 0.6rem;
+  }
+  & th,
+  & td {
+    border: 1px solid var(--border);
+    padding: 0.4rem 0.6rem;
+    text-align: left;
+  }
+}

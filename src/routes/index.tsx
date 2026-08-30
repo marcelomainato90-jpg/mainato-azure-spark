@@ -188,6 +188,7 @@ function Index() {
           onClick={() => {
             abortRef.current?.abort();
             setMessages([]);
+            setPendingImages([]);
             setError(null);
           }}
           className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface-2/70 px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:border-primary/60 hover:text-foreground"
@@ -237,6 +238,18 @@ function Index() {
                   <p className="mb-1 text-xs font-medium text-muted-foreground">
                     {m.role === "user" ? "Você" : "Mainato GPT Super"}
                   </p>
+                  {m.images && m.images.length > 0 && (
+                    <div className="mb-2 flex flex-wrap gap-2">
+                      {m.images.map((src, idx) => (
+                        <img
+                          key={idx}
+                          src={src}
+                          alt={`Imagem enviada ${idx + 1}`}
+                          className="h-28 w-28 rounded-xl border border-border object-cover"
+                        />
+                      ))}
+                    </div>
+                  )}
                   {m.content ? (
                     <div className="prose-chat text-[15px] leading-relaxed break-words">
                       <ReactMarkdown remarkPlugins={[remarkGfm]}>{m.content}</ReactMarkdown>

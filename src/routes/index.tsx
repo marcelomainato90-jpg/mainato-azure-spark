@@ -49,9 +49,34 @@ function Index() {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [pendingImages, setPendingImages] = useState<string[]>([]);
   const abortRef = useRef<AbortController | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
   const taRef = useRef<HTMLTextAreaElement>(null);
+  const galleryRef = useRef<HTMLInputElement>(null);
+  const cameraRef = useRef<HTMLInputElement>(null);
+
+  const addFiles = async (files: FileList | File[]) => {
+    setError(null);
+    const remaining = MAX_IMAGES - pendingImages.length;
+    for (const file of Array.from(files).slice(0, Math.max(remaining, 0))) {
+      if (!file.type.startsWith("image/")) {
+        setError("Só são aceites imagens (JPG, PNG, etc.).");
+        continue;
+      }
+      if (file.size > MAX_IMAGE_BYTES) {
+        setError("A imagem é demasiado grande (máx. 5 MB).");
+        continue;
+      }
+      try {
+        const dataUrl = await readFileAsDataUrl(file);
+        setPendingImages((prev) => [...prev, dataUrl]);
+      } catch (e) {
+        setError((e as Error).message);
+      }
+    }
+    if (remaining <= 0) setError(`Máximo de ${MAX_IMAGES} imagens por mensagem.`);
+  };
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth" });

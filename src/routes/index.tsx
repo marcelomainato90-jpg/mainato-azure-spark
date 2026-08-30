@@ -84,11 +84,15 @@ function Index() {
 
   const send = async (text: string) => {
     const content = text.trim();
-    if (!content || loading) return;
+    if ((!content && pendingImages.length === 0) || loading) return;
     setError(null);
-    const next: Msg[] = [...messages, { role: "user", content }];
+    const images = pendingImages;
+    const userMsg: Msg = { role: "user", content };
+    if (images.length > 0) userMsg.images = images;
+    const next: Msg[] = [...messages, userMsg];
     setMessages([...next, { role: "assistant", content: "" }]);
     setInput("");
+    setPendingImages([]);
     setLoading(true);
 
     const controller = new AbortController();

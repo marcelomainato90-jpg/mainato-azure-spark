@@ -373,13 +373,14 @@ function Index() {
                   send(input);
                   if (taRef.current) taRef.current.style.height = "auto";
                 }}
-                disabled={!input.trim()}
+                disabled={!input.trim() && pendingImages.length === 0}
                 className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-brand-gradient text-primary-foreground transition-opacity disabled:opacity-40"
                 aria-label="Enviar mensagem"
               >
                 <ArrowUp className="size-5" />
               </button>
             )}
+            </div>
           </div>
           <p className="mt-2 text-center text-[11px] text-muted-foreground">
             Mainato GPT Super pode cometer erros. Verifique informações importantes.

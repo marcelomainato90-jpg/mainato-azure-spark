@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { ArrowUp, Sparkles, Square, Plus, Bot, User } from "lucide-react";
+import { ArrowUp, Sparkles, Square, Plus, Bot, User, ImagePlus, Camera, X } from "lucide-react";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -23,7 +23,19 @@ export const Route = createFileRoute("/")({
   component: Index,
 });
 
-type Msg = { role: "user" | "assistant"; content: string };
+type Msg = { role: "user" | "assistant"; content: string; images?: string[] };
+
+const MAX_IMAGES = 4;
+const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
+
+function readFileAsDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = () => reject(new Error("Falha ao ler a imagem."));
+    reader.readAsDataURL(file);
+  });
+}
 
 const SUGGESTIONS = [
   "Explique buracos negros de forma simples",
@@ -37,9 +49,34 @@ function Index() {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [pendingImages, setPendingImages] = useState<string[]>([]);
   const abortRef = useRef<AbortController | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
   const taRef = useRef<HTMLTextAreaElement>(null);
+  const galleryRef = useRef<HTMLInputElement>(null);
+  const cameraRef = useRef<HTMLInputElement>(null);
+
+  const addFiles = async (files: FileList | File[]) => {
+    setError(null);
+    const remaining = MAX_IMAGES - pendingImages.length;
+    for (const file of Array.from(files).slice(0, Math.max(remaining, 0))) {
+      if (!file.type.startsWith("image/")) {
+        setError("Só são aceites imagens (JPG, PNG, etc.).");
+        continue;
+      }
+      if (file.size > MAX_IMAGE_BYTES) {
+        setError("A imagem é demasiado grande (máx. 5 MB).");
+        continue;
+      }
+      try {
+        const dataUrl = await readFileAsDataUrl(file);
+        setPendingImages((prev) => [...prev, dataUrl]);
+      } catch (e) {
+        setError((e as Error).message);
+      }
+    }
+    if (remaining <= 0) setError(`Máximo de ${MAX_IMAGES} imagens por mensagem.`);
+  };
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -47,11 +84,15 @@ function Index() {
 
   const send = async (text: string) => {
     const content = text.trim();
-    if (!content || loading) return;
+    if ((!content && pendingImages.length === 0) || loading) return;
     setError(null);
-    const next: Msg[] = [...messages, { role: "user", content }];
+    const images = pendingImages;
+    const userMsg: Msg = { role: "user", content };
+    if (images.length > 0) userMsg.images = images;
+    const next: Msg[] = [...messages, userMsg];
     setMessages([...next, { role: "assistant", content: "" }]);
     setInput("");
+    setPendingImages([]);
     setLoading(true);
 
     const controller = new AbortController();
@@ -147,6 +188,7 @@ function Index() {
           onClick={() => {
             abortRef.current?.abort();
             setMessages([]);
+            setPendingImages([]);
             setError(null);
           }}
           className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface-2/70 px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:border-primary/60 hover:text-foreground"
@@ -196,6 +238,18 @@ function Index() {
                   <p className="mb-1 text-xs font-medium text-muted-foreground">
                     {m.role === "user" ? "Você" : "Mainato GPT Super"}
                   </p>
+                  {m.images && m.images.length > 0 && (
+                    <div className="mb-2 flex flex-wrap gap-2">
+                      {m.images.map((src, idx) => (
+                        <img
+                          key={idx}
+                          src={src}
+                          alt={`Imagem enviada ${idx + 1}`}
+                          className="h-28 w-28 rounded-xl border border-border object-cover"
+                        />
+                      ))}
+                    </div>
+                  )}
                   {m.content ? (
                     <div className="prose-chat text-[15px] leading-relaxed break-words">
                       <ReactMarkdown remarkPlugins={[remarkGfm]}>{m.content}</ReactMarkdown>
@@ -225,8 +279,67 @@ function Index() {
         )}
 
         <div className="sticky bottom-0 z-10 bg-gradient-to-t from-background via-background to-transparent pb-5 pt-3">
-          <div className="flex items-end gap-2 rounded-3xl border border-border bg-surface/90 p-2 pl-4 shadow-glow backdrop-blur focus-within:border-primary/70">
-            <textarea
+          <input
+            ref={galleryRef}
+            type="file"
+            accept="image/*"
+            multiple
+            className="hidden"
+            onChange={(e) => {
+              if (e.target.files) addFiles(e.target.files);
+              e.target.value = "";
+            }}
+          />
+          <input
+            ref={cameraRef}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            className="hidden"
+            onChange={(e) => {
+              if (e.target.files) addFiles(e.target.files);
+              e.target.value = "";
+            }}
+          />
+          <div className="rounded-3xl border border-border bg-surface/90 shadow-glow backdrop-blur focus-within:border-primary/70">
+            {pendingImages.length > 0 && (
+              <div className="flex flex-wrap gap-2 px-4 pt-3">
+                {pendingImages.map((src, idx) => (
+                  <div key={idx} className="relative">
+                    <img
+                      src={src}
+                      alt={`Anexo ${idx + 1}`}
+                      className="h-16 w-16 rounded-xl border border-border object-cover"
+                    />
+                    <button
+                      onClick={() =>
+                        setPendingImages((prev) => prev.filter((_, i) => i !== idx))
+                      }
+                      className="absolute -right-1.5 -top-1.5 flex size-5 items-center justify-center rounded-full bg-surface-2 border border-border text-muted-foreground hover:text-foreground"
+                      aria-label="Remover imagem"
+                    >
+                      <X className="size-3" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+            <div className="flex items-end gap-1.5 p-2 pl-2">
+              <button
+                onClick={() => galleryRef.current?.click()}
+                className="flex size-10 shrink-0 items-center justify-center rounded-2xl text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+                aria-label="Anexar imagem"
+              >
+                <ImagePlus className="size-5" />
+              </button>
+              <button
+                onClick={() => cameraRef.current?.click()}
+                className="flex size-10 shrink-0 items-center justify-center rounded-2xl text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+                aria-label="Tirar foto"
+              >
+                <Camera className="size-5" />
+              </button>
+              <textarea
               ref={taRef}
               value={input}
               rows={1}
@@ -260,13 +373,14 @@ function Index() {
                   send(input);
                   if (taRef.current) taRef.current.style.height = "auto";
                 }}
-                disabled={!input.trim()}
+                disabled={!input.trim() && pendingImages.length === 0}
                 className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-brand-gradient text-primary-foreground transition-opacity disabled:opacity-40"
                 aria-label="Enviar mensagem"
               >
                 <ArrowUp className="size-5" />
               </button>
             )}
+            </div>
           </div>
           <p className="mt-2 text-center text-[11px] text-muted-foreground">
             Mainato GPT Super pode cometer erros. Verifique informações importantes.

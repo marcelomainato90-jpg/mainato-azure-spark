@@ -279,8 +279,67 @@ function Index() {
         )}
 
         <div className="sticky bottom-0 z-10 bg-gradient-to-t from-background via-background to-transparent pb-5 pt-3">
-          <div className="flex items-end gap-2 rounded-3xl border border-border bg-surface/90 p-2 pl-4 shadow-glow backdrop-blur focus-within:border-primary/70">
-            <textarea
+          <input
+            ref={galleryRef}
+            type="file"
+            accept="image/*"
+            multiple
+            className="hidden"
+            onChange={(e) => {
+              if (e.target.files) addFiles(e.target.files);
+              e.target.value = "";
+            }}
+          />
+          <input
+            ref={cameraRef}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            className="hidden"
+            onChange={(e) => {
+              if (e.target.files) addFiles(e.target.files);
+              e.target.value = "";
+            }}
+          />
+          <div className="rounded-3xl border border-border bg-surface/90 shadow-glow backdrop-blur focus-within:border-primary/70">
+            {pendingImages.length > 0 && (
+              <div className="flex flex-wrap gap-2 px-4 pt-3">
+                {pendingImages.map((src, idx) => (
+                  <div key={idx} className="relative">
+                    <img
+                      src={src}
+                      alt={`Anexo ${idx + 1}`}
+                      className="h-16 w-16 rounded-xl border border-border object-cover"
+                    />
+                    <button
+                      onClick={() =>
+                        setPendingImages((prev) => prev.filter((_, i) => i !== idx))
+                      }
+                      className="absolute -right-1.5 -top-1.5 flex size-5 items-center justify-center rounded-full bg-surface-2 border border-border text-muted-foreground hover:text-foreground"
+                      aria-label="Remover imagem"
+                    >
+                      <X className="size-3" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+            <div className="flex items-end gap-1.5 p-2 pl-2">
+              <button
+                onClick={() => galleryRef.current?.click()}
+                className="flex size-10 shrink-0 items-center justify-center rounded-2xl text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+                aria-label="Anexar imagem"
+              >
+                <ImagePlus className="size-5" />
+              </button>
+              <button
+                onClick={() => cameraRef.current?.click()}
+                className="flex size-10 shrink-0 items-center justify-center rounded-2xl text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+                aria-label="Tirar foto"
+              >
+                <Camera className="size-5" />
+              </button>
+              <textarea
               ref={taRef}
               value={input}
               rows={1}

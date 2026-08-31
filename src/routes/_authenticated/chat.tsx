@@ -288,31 +288,77 @@ function Chat() {
         </div>
         <div className="flex items-center gap-1.5">
           {voiceSupported && (
-            <button
-              onClick={() => {
-                if (autoSpeak) stop();
-                setAutoSpeak((v) => !v);
-              }}
-              aria-pressed={autoSpeak}
-              title={autoSpeak ? "Desligar leitura em voz" : "Ler respostas em voz alta"}
-              className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
-                autoSpeak
-                  ? "border-primary/70 bg-primary/15 text-foreground"
-                  : "border-border bg-surface-2/70 text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              {autoSpeak ? <Volume2 className="size-3.5" /> : <VolumeX className="size-3.5" />}
-              Voz
-            </button>
+            <div className="relative">
+              <div
+                className={`flex items-center rounded-full border transition-colors ${
+                  autoSpeak
+                    ? "border-primary/70 bg-primary/15"
+                    : "border-border bg-surface-2/70"
+                }`}
+              >
+                <button
+                  onClick={() => {
+                    if (autoSpeak) stop();
+                    setAutoSpeak((v) => !v);
+                  }}
+                  aria-pressed={autoSpeak}
+                  title={autoSpeak ? "Desligar leitura em voz" : "Ler respostas em voz alta"}
+                  className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium ${
+                    autoSpeak ? "text-foreground" : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {autoSpeak ? <Volume2 className="size-3.5" /> : <VolumeX className="size-3.5" />}
+                  Voz
+                </button>
+                {voices.length > 1 && (
+                  <button
+                    onClick={() => setShowVoices((v) => !v)}
+                    aria-label="Escolher voz"
+                    title="Escolher voz"
+                    className="pr-2.5 text-[10px] text-muted-foreground hover:text-foreground"
+                  >
+                    ▾
+                  </button>
+                )}
+              </div>
+              {showVoices && (
+                <div className="absolute right-0 top-10 z-30 w-60 overflow-hidden rounded-2xl border border-border bg-surface shadow-glow">
+                  <p className="border-b border-border/60 px-3 py-2 text-[11px] text-muted-foreground">
+                    Voz portuguesa
+                  </p>
+                  <ul className="max-h-64 overflow-y-auto">
+                    {voices.map((v) => (
+                      <li key={v.voiceURI}>
+                        <button
+                          onClick={() => {
+                            selectVoice(v.voiceURI);
+                            setShowVoices(false);
+                            speak("Olá, sou o Mainato GPT Super. Como posso ajudar?", -1);
+                          }}
+                          className={`flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-xs transition-colors hover:bg-surface-2 ${
+                            v.voiceURI === voiceURI ? "text-foreground" : "text-muted-foreground"
+                          }`}
+                        >
+                          <span className="truncate">{v.name}</span>
+                          <span className="shrink-0 text-[10px] uppercase">{v.lang}</span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
           )}
+          <Link
+            to="/chats"
+            aria-label="Conversas guardadas"
+            title="Conversas guardadas"
+            className="inline-flex size-8 items-center justify-center rounded-full border border-border bg-surface-2/70 text-muted-foreground transition-colors hover:border-primary/60 hover:text-foreground"
+          >
+            <History className="size-3.5" />
+          </Link>
           <button
-            onClick={() => {
-              abortRef.current?.abort();
-              stop();
-              setMessages([]);
-              setPendingImages([]);
-              setError(null);
-            }}
+            onClick={newChat}
             className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface-2/70 px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:border-primary/60 hover:text-foreground"
           >
             <Plus className="size-3.5" />
@@ -327,6 +373,7 @@ function Chat() {
             <LogOut className="size-3.5" />
           </button>
         </div>
+
       </header>
 
       <main className="relative z-10 mx-auto flex w-full max-w-3xl flex-1 flex-col px-4 sm:px-6">

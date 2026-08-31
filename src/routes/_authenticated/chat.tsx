@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -15,11 +15,20 @@ import {
   Volume2,
   VolumeX,
   LogOut,
+  History,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useSpeech } from "@/hooks/use-speech";
+import {
+  createConversation,
+  loadMessages,
+  makeTitle,
+  saveMessage,
+} from "@/lib/conversations";
 
 export const Route = createFileRoute("/_authenticated/chat")({
+  validateSearch: (search: Record<string, unknown>): { c?: string } =>
+    typeof search['c'] === "string" ? { c: search['c'] } : {},
   head: () => ({
     meta: [
       { title: "Conversa — Mainato GPT Super" },
@@ -37,6 +46,7 @@ export const Route = createFileRoute("/_authenticated/chat")({
   }),
   component: Chat,
 });
+
 
 type Msg = { role: "user" | "assistant"; content: string; images?: string[] };
 

@@ -241,12 +241,18 @@ function Chat() {
           copy[copy.length - 1] = { role: "assistant", content: "_Sem resposta._" };
           return copy;
         });
-      } else if (autoSpeak && voiceSupported) {
-        setMessages((prev) => {
-          speak(acc, prev.length - 1);
-          return prev;
-        });
+      } else {
+        if (convRef.current) {
+          saveMessage(convRef.current, "assistant", acc).catch(() => {});
+        }
+        if (autoSpeak && voiceSupported) {
+          setMessages((prev) => {
+            speak(acc, prev.length - 1);
+            return prev;
+          });
+        }
       }
+
     } catch (e) {
       if ((e as Error).name === "AbortError") {
         setMessages((prev) =>

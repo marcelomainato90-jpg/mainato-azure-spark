@@ -71,18 +71,60 @@ const SUGGESTIONS = [
 
 function Chat() {
   const navigate = useNavigate();
+  const { c: conversationParam } = Route.useSearch();
   const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pendingImages, setPendingImages] = useState<string[]>([]);
   const [autoSpeak, setAutoSpeak] = useState(false);
+  const [showVoices, setShowVoices] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
+  const convRef = useRef<string | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
   const taRef = useRef<HTMLTextAreaElement>(null);
   const galleryRef = useRef<HTMLInputElement>(null);
   const cameraRef = useRef<HTMLInputElement>(null);
-  const { supported: voiceSupported, speakingId, speak, stop } = useSpeech();
+  const {
+    supported: voiceSupported,
+    speakingId,
+    speak,
+    stop,
+    voices,
+    voiceURI,
+    selectVoice,
+  } = useSpeech();
+
+  // Reabrir uma conversa guardada (?c=<id>)
+  useEffect(() => {
+    if (!conversationParam) {
+      convRef.current = null;
+      setMessages([]);
+      return;
+    }
+    convRef.current = conversationParam;
+    loadMessages(conversationParam)
+      .then((rows) =>
+        setMessages(
+          rows.map((r) => ({
+            role: r.role,
+            content: r.content,
+            ...(r.images.length > 0 ? { images: r.images } : {}),
+          })),
+        ),
+      )
+      .catch(() => setError("Não foi possível abrir esta conversa."));
+  }, [conversationParam]);
+
+  const newChat = () => {
+    abortRef.current?.abort();
+    stop();
+    convRef.current = null;
+    setMessages([]);
+    setPendingImages([]);
+    setError(null);
+    if (conversationParam) navigate({ to: "/chat", search: {}, replace: true });
+  };
 
   const signOut = async () => {
     stop();
@@ -90,6 +132,7 @@ function Chat() {
     await supabase.auth.signOut();
     navigate({ to: "/auth", replace: true });
   };
+
 
   const addFiles = async (files: FileList | File[]) => {
     setError(null);

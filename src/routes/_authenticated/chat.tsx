@@ -177,6 +177,18 @@ function Chat() {
     const controller = new AbortController();
     abortRef.current = controller;
 
+    // Guardar a conversa e a mensagem do utilizador
+    try {
+      if (!convRef.current) {
+        convRef.current = await createConversation(makeTitle(content, images.length > 0));
+      }
+      await saveMessage(convRef.current, "user", content, images);
+    } catch {
+      /* a conversa continua mesmo se o histórico falhar */
+    }
+
+
+
     try {
       const res = await fetch("/api/chat", {
         method: "POST",

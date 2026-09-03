@@ -240,9 +240,4 @@
     border-collapse: collapse;
     margin-block: 0.6rem;
   }
-  & th,
-  & td {
-    border: 1px solid var(--border);
-    padding: 0.4rem 0.6rem;
-    text-align: left;
-  #lovable-badge { display: none !important; }
+#lovable-badge {display: none !important;}

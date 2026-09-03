@@ -245,5 +245,4 @@
     border: 1px solid var(--border);
     padding: 0.4rem 0.6rem;
     text-align: left;
-  }
-}
+  #lovable-badge { display: none !important; }

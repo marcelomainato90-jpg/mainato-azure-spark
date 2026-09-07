@@ -240,6 +240,22 @@
     border-collapse: collapse;
     margin-block: 0.6rem;
   }
-#lovable-badge {
-display: none !important;
+  & th,
+  & td {
+    border: 1px solid var(--border);
+    padding: 0.4rem 0.6rem;
+    text-align: left;
   }
+}
+
+a[href*="lovable.dev"],
+iframe[src*="lovable.dev"],
+div[style*="Edit with Lovable"],
+.lovable-badge,
+#lovable-badge {
+  display: none !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+

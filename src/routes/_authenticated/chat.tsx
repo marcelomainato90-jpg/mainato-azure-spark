@@ -16,6 +16,7 @@ import {
   VolumeX,
   LogOut,
   History,
+  Wand2,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useSpeech } from "@/hooks/use-speech";
@@ -25,6 +26,12 @@ import {
   makeTitle,
   saveMessage,
 } from "@/lib/conversations";
+import {
+  looksLikeImageRequest,
+  resolveImageRefs,
+  storeGeneratedImage,
+  streamGeneratedImage,
+} from "@/lib/image-gen";
 
 export const Route = createFileRoute("/_authenticated/chat")({
   validateSearch: (search: Record<string, unknown>): { c?: string } =>
@@ -79,6 +86,7 @@ function Chat() {
   const [pendingImages, setPendingImages] = useState<string[]>([]);
   const [autoSpeak, setAutoSpeak] = useState(false);
   const [showVoices, setShowVoices] = useState(false);
+  const [imageMode, setImageMode] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
   const convRef = useRef<string | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
@@ -104,15 +112,16 @@ function Chat() {
     }
     convRef.current = conversationParam;
     loadMessages(conversationParam)
-      .then((rows) =>
-        setMessages(
-          rows.map((r) => ({
+      .then(async (rows) => {
+        const resolved = await Promise.all(
+          rows.map(async (r) => ({
             role: r.role,
             content: r.content,
-            ...(r.images.length > 0 ? { images: r.images } : {}),
+            ...(r.images.length > 0 ? { images: await resolveImageRefs(r.images) } : {}),
           })),
-        ),
-      )
+        );
+        setMessages(resolved as Msg[]);
+      })
       .catch(() => setError("Não foi possível abrir esta conversa."));
   }, [conversationParam]);
 
@@ -177,6 +186,8 @@ function Chat() {
     const controller = new AbortController();
     abortRef.current = controller;
 
+    const wantsImage = imageMode || looksLikeImageRequest(content);
+
     // Guardar a conversa e a mensagem do utilizador
     try {
       if (!convRef.current) {
@@ -185,6 +196,46 @@ function Chat() {
       await saveMessage(convRef.current, "user", content, images);
     } catch {
       /* a conversa continua mesmo se o histórico falhar */
+    }
+
+    if (wantsImage) {
+      try {
+        let finalUrl: string | null = null;
+        await streamGeneratedImage(
+          content,
+          images,
+          (dataUrl, isFinal) => {
+            if (isFinal) finalUrl = dataUrl;
+            setMessages((prev) => {
+              const copy = [...prev];
+              copy[copy.length - 1] = {
+                role: "assistant",
+                content: isFinal ? "Aqui está a sua imagem em alta qualidade." : "A criar a sua imagem…",
+                images: [dataUrl],
+              };
+              return copy;
+            });
+          },
+          controller.signal,
+        );
+        if (finalUrl && convRef.current) {
+          const ref = await storeGeneratedImage(finalUrl);
+          saveMessage(
+            convRef.current,
+            "assistant",
+            "Aqui está a sua imagem em alta qualidade.",
+            ref ? [ref] : [],
+          ).catch(() => {});
+        }
+      } catch (e) {
+        if ((e as Error).name !== "AbortError") setError((e as Error).message);
+        setMessages((prev) => prev.slice(0, -1));
+      } finally {
+        setLoading(false);
+        abortRef.current = null;
+        setImageMode(false);
+      }
+      return;
     }
 
 
@@ -422,8 +473,12 @@ function Chat() {
                         <img
                           key={idx}
                           src={src}
-                          alt={`Imagem enviada ${idx + 1}`}
-                          className="h-28 w-28 rounded-xl border border-border object-cover"
+                          alt={m.role === "user" ? `Imagem enviada ${idx + 1}` : `Imagem criada ${idx + 1}`}
+                          className={
+                            m.role === "assistant"
+                              ? "max-h-96 w-full max-w-md rounded-2xl border border-border object-contain"
+                              : "h-28 w-28 rounded-xl border border-border object-cover"
+                          }
                         />
                       ))}
                     </div>
@@ -529,6 +584,19 @@ function Chat() {
                 <ImagePlus className="size-5" />
               </button>
               <button
+                onClick={() => setImageMode((v) => !v)}
+                aria-pressed={imageMode}
+                title="Criar imagem com IA"
+                className={`flex size-10 shrink-0 items-center justify-center rounded-2xl transition-colors ${
+                  imageMode
+                    ? "bg-brand-gradient text-primary-foreground"
+                    : "text-muted-foreground hover:bg-secondary hover:text-foreground"
+                }`}
+                aria-label="Criar imagem"
+              >
+                <Wand2 className="size-5" />
+              </button>
+              <button
                 onClick={() => cameraRef.current?.click()}
                 className="flex size-10 shrink-0 items-center justify-center rounded-2xl text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
                 aria-label="Tirar foto"
@@ -539,7 +607,7 @@ function Chat() {
                 ref={taRef}
                 value={input}
                 rows={1}
-                placeholder="Escreva a sua mensagem..."
+                placeholder={imageMode ? "Descreva a imagem a criar..." : "Escreva a sua mensagem..."}
                 onChange={(e) => {
                   setInput(e.target.value);
                   const el = e.target;

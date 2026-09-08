@@ -1,5 +1,6 @@
 import { flushSync } from "react-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { keyHeaders } from "@/lib/user-key";
 
 const BUCKET = "imagens-geradas";
 
@@ -22,7 +23,7 @@ export async function streamGeneratedImage(
   const post = (stream: boolean) =>
     fetch("/api/generate-image", {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: { "content-type": "application/json", ...keyHeaders() },
       body: JSON.stringify({ prompt, images: refs, stream }),
       ...(signal ? { signal } : {}),
     });

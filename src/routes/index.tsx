@@ -1,7 +1,8 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Sparkles, ImagePlus, Volume2, Zap } from "lucide-react";
+import { ImagePlus, Volume2, Zap } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import logoAsset from "@/assets/mainato-logo.png.asset.json";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -43,9 +44,11 @@ function Landing() {
     <div className="relative flex min-h-[100dvh] flex-col items-center justify-center bg-background px-4 py-16 text-foreground">
       <div className="pointer-events-none absolute inset-x-0 top-0 h-[420px] halo" />
       <div className="relative z-10 w-full max-w-2xl text-center">
-        <div className="mx-auto flex size-14 items-center justify-center rounded-2xl bg-brand-gradient shadow-glow">
-          <Sparkles className="size-6 text-primary-foreground" />
-        </div>
+        <img
+          src={logoAsset.url}
+          alt="Logótipo do Mainato GPT Super"
+          className="mx-auto w-36 rounded-[2rem] shadow-glow sm:w-44"
+        />
         <h1 className="mt-6 text-4xl font-bold sm:text-6xl">
           Mainato <span className="text-brand-gradient">GPT Super</span>
         </h1>

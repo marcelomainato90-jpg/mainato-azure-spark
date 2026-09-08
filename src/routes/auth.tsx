@@ -1,8 +1,8 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Sparkles } from "lucide-react";
 import { lovable } from "@/integrations/lovable";
 import { supabase } from "@/integrations/supabase/client";
+import logoAsset from "@/assets/mainato-logo.png.asset.json";
 
 export const Route = createFileRoute("/auth")({
   head: () => ({
@@ -52,9 +52,11 @@ function AuthPage() {
     <div className="relative flex min-h-[100dvh] items-center justify-center bg-background px-4 text-foreground">
       <div className="pointer-events-none absolute inset-x-0 top-0 h-[420px] halo" />
       <div className="relative z-10 w-full max-w-sm rounded-3xl border border-border bg-surface/80 p-8 text-center shadow-glow backdrop-blur">
-        <div className="mx-auto flex size-12 items-center justify-center rounded-2xl bg-brand-gradient shadow-glow">
-          <Sparkles className="size-5 text-primary-foreground" />
-        </div>
+        <img
+          src={logoAsset.url}
+          alt="Logótipo do Mainato GPT Super"
+          className="mx-auto w-28 rounded-3xl shadow-glow"
+        />
         <h1 className="mt-5 text-2xl font-bold">
           Mainato <span className="text-brand-gradient">GPT Super</span>
         </h1>

@@ -11,18 +11,17 @@ export const Route = createFileRoute("/api/generate-image")({
   server: {
     handlers: {
       POST: async ({ request }) => {
-        const apiKey = request.headers.get("x-openai-key")?.trim();
+        const apiKey = process.env["LOVABLE_API_KEY"];
         if (!apiKey) {
           return new Response(
-            JSON.stringify({
-              error: "Adicione a sua chave da OpenAI nas Definições para criar imagens.",
-            }),
-            { status: 401, headers: { "content-type": "application/json" } },
+            JSON.stringify({ error: "A criação de imagens não está configurada." }),
+            { status: 500, headers: { "content-type": "application/json" } },
           );
         }
 
         const body = (await request.json()) as {
           prompt?: string;
+          images?: string[];
           stream?: boolean;
         };
         const prompt = (body.prompt ?? "").trim();
@@ -33,29 +32,32 @@ export const Route = createFileRoute("/api/generate-image")({
           });
         }
         const stream = body.stream !== false;
+        const refs = Array.isArray(body.images) ? body.images.slice(0, 3) : [];
 
-        const upstream = await fetch("https://api.openai.com/v1/images/generations", {
-          method: "POST",
-          headers: {
-            "content-type": "application/json",
-            Authorization: `Bearer ${apiKey}`,
+        const upstream = await fetch(
+          "https://ai.gateway.lovable.dev/v1/images/generations",
+          {
+            method: "POST",
+            headers: {
+              "content-type": "application/json",
+              Authorization: `Bearer ${apiKey}`,
+            },
+            body: JSON.stringify({
+              model: "google/gemini-3-pro-image",
+              prompt: `${prompt}\n\n${STYLE_GUIDE}`,
+              ...(refs.length > 0 ? { image: refs } : {}),
+              ...(stream ? { stream: true, partial_images: 1 } : {}),
+            }),
           },
-          body: JSON.stringify({
-            model: "gpt-image-1",
-            prompt: `${prompt}\n\n${STYLE_GUIDE}`,
-            size: "1024x1024",
-            quality: "high",
-            ...(stream ? { stream: true, partial_images: 1 } : {}),
-          }),
-        });
+        );
 
         if (!upstream.ok || !upstream.body) {
           const text = await upstream.text().catch(() => "");
           const message =
-            upstream.status === 401
-              ? "A sua chave da OpenAI não é válida. Verifique-a nas Definições."
-              : upstream.status === 429
-                ? "A sua conta OpenAI atingiu o limite ou ficou sem saldo."
+            upstream.status === 429
+              ? "A IA está muito ocupada neste momento. Tente novamente dentro de instantes."
+              : upstream.status === 402 || upstream.status === 403
+                ? "A criação de imagens está temporariamente indisponível."
                 : `Erro ao criar a imagem (${upstream.status}). ${text.slice(0, 200)}`;
           return new Response(JSON.stringify({ error: message }), {
             status: upstream.status,

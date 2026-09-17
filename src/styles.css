@@ -68,20 +68,12 @@
 
 :root {
   --radius: 1rem;
-  --background: oklch(0.16 0.021 264);
-  --foreground: oklch(0.97 0.005 255);
-  --card: oklch(0.21 0.026 264);
-  --card-foreground: oklch(0.97 0.005 255);
-  --popover: oklch(0.21 0.026 264);
-  --popover-foreground: oklch(0.97 0.005 255);
-  --primary: oklch(0.62 0.19 254);
-  --primary-foreground: oklch(0.99 0.005 255);
-  --primary-glow: oklch(0.75 0.15 232);
-  --secondary: oklch(0.27 0.03 264);
-  --secondary-foreground: oklch(0.97 0.005 255);
-  --muted: oklch(0.25 0.028 264);
-  --muted-foreground: oklch(0.7 0.028 258);
-  --accent: oklch(0.32 0.06 258);
+  --background: oklch(0 0 0);      /* Preto */
+--foreground: oklch(1 0 0);      /* Branco */
+--primary: oklch(1 0 0);         /* Branco */
+--primary-glow: oklch(0.75 0 0); /* Cinza claro */
+--secondary: oklch(0.22 0 0);    /* Cinza escuro */
+--accent: oklch(0.35 0 0);       /* Cinza */
   --accent-foreground: oklch(0.97 0.005 255);
   --destructive: oklch(0.62 0.22 25);
   --destructive-foreground: oklch(0.99 0.005 255);
